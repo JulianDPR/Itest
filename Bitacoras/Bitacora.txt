@@ -1,0 +1,28 @@
+# Dia 1 Sabado 30-12-2023
+
+La interpretacion de las empiricas en ledwina, parece ser muy distinta a la que genest le brinda,
+ademas, ledwina mide dependencia por cuadrante, por lo mismo, realiza pruebas punto a punto entre los datos,
+ante un mismo conjunto de datos, ella puede medir la dependencia en distintos puntos, por lo mismo,
+sus pruebas de hipotesis dependen de dos variables u y v, bajo un enfoque bayesiano estas obviamente son
+uniformes (0,1), sin embargo, bajo un enfoque clasico, poseemos una unica obsevacion de la pareja u,v; frente a 
+nuestros conjuntos de datos X,Y; ante esto, la formula propuesta al inicio, puede tener mucha mas logica, sin embargo,
+seguire testiando. Lo unico que he descubierto es que Ledwina trabaja dos estadisticos de orden,
+el primero como Dn(u,v) = 1/n sum(R/n < u, S/n , v) y el otro para Cn(u,v) = 1/n sum(R/(n+1)<u, S/(n+1)<v), donde
+la autora dice que las propiedas asintoticas son las mismas, y esto es evidente, pues, cuando n -> infty, entonces,
+n ~ n+1
+
+11:48 pm
+
+Qn no toma al 1 como posible valor de u,v ni 0, esto es por que en los bordes del rectangulo unitario, las copulas,
+son explicitamente independientes; por lo cual, en estos puntos posiblemente marque errores matematicos y/o incongruencias
+por lo cual, al ser los datos discretos, se deberia sugerir en el estudio y/o algoritmo que no se tome que la cota
+maxima se de hasta el ultimo salto decimal antes del 1, o sea, por ejemplo, si se toman 5 datos, el supremo del
+conjunto de datos se de hasta 0.8 o el min(max(R), max(S)), o por otro lado. Sin embargo, esto tambien puede depender
+de la copula.
+
+
+Tareas para maniana:
+
+- Organizar los rangos
+- Volver a crear la clayton y redactar el paso a paso
+- Escribir Qc para la clayton

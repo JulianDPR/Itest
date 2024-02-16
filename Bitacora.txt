@@ -1,0 +1,104 @@
+# Dia 1 Sabado 30-12-2023
+
+La interpretacion de las empiricas en ledwina, parece ser muy distinta a la que genest le brinda,
+ademas, ledwina mide dependencia por cuadrante, por lo mismo, realiza pruebas punto a punto entre los datos,
+ante un mismo conjunto de datos, ella puede medir la dependencia en distintos puntos, por lo mismo,
+sus pruebas de hipotesis dependen de dos variables u y v, bajo un enfoque bayesiano estas obviamente son
+uniformes (0,1), sin embargo, bajo un enfoque clasico, poseemos una unica obsevacion de la pareja u,v; frente a 
+nuestros conjuntos de datos X,Y; ante esto, la formula propuesta al inicio, puede tener mucha mas logica, sin embargo,
+seguire testiando. Lo unico que he descubierto es que Ledwina trabaja dos estadisticos de orden,
+el primero como Dn(u,v) = 1/n sum(R/n < u, S/n , v) y el otro para Cn(u,v) = 1/n sum(R/(n+1)<u, S/(n+1)<v), donde
+la autora dice que las propiedas asintoticas son las mismas, y esto es evidente, pues, cuando n -> infty, entonces,
+n ~ n+1
+
+11:48 pm
+
+Qn no toma al 1 como posible valor de u,v ni 0, esto es por que en los bordes del rectangulo unitario, las copulas,
+son explicitamente independientes; por lo cual, en estos puntos posiblemente marque errores matematicos y/o incongruencias
+por lo cual (Corregido 7-01-2024), al ser los datos discretos, se deberia sugerir en el estudio y/o algoritmo que no se tome que la cota
+maxima se de hasta el ultimo salto decimal antes del 1, o sea, por ejemplo, si se toman 5 datos, el supremo del
+conjunto de datos se de hasta 0.8 o el min(max(R), max(S)), o por otro lado. Sin embargo, esto tambien puede depender
+de la copula.
+
+
+Tareas para maniana:
+
+- Organizar los rangos
+- Volver a crear la clayton y redactar el paso a paso
+- Escribir Qc para la clayton
+
+
+# Dia 31-12-2023 1:30 pm
+
+Frente a las tareas pendientes, se ha completado la parte de acomodar los rangos, ademas, de ver la eficiencia de cada uno
+de los estimadores de la empirica, se encontro que el estadistico propuesto en Ledwina Cn genera al rededor de un
+0.05% de datos faltantes para qn, o sea, se salen del rango de q; por otro lado, el Dn genera al rededor del 0.5% de datos
+que se salen del dominio, o sea, 10 veces mas datos faltantes que el propuesto por ledwina, sin embargo,
+me encuentro insatisfecho debido a que aun asi no se logra que se guarde la concordancia con los datos, pero, 
+estos errores se pueden ver en el documento de ledwina al hablar de las copulas superiores e inferiores, pues,
+los resultados de las copulas no estaban siempre en esos rangos de valores.
+
+Procedere entones a crear la clayton paso a paso.
+
+- Primero Derivamos la funcion de copula de la clayton respecto a cualquier variable (u) y a esto lo nombramos w
+
+w = (-1/t)(u^-t + v^-t -1)^(-1/t - 1)(-t(u^-t-1)))
+
+- Despejamos en terminos de la variable no derivada (v)
+
+(wu^(t+1))^(-t/(1+t)) = u^-t + v ^-t -1 
+
+w^-t/(1+t) u^-t +1 -u^t = v^-t
+
+(w^(-t/(1+t)-1)u^(-t) + 1)^(-1/t) = v
+
+6:21 pm
+
+Se cumplieron todas las tareas de hoy, sin embargo, aun me causa duda porque en la cola superior de la copula existen
+tantos problemas, he visto, ademas, que no es solo en la cola, sino tambien, en distintas partes de las extremidades
+superiores, acaso seria mejor aplicar la copula empirica como la correlacion entre las dos funciones de los datos?
+O seguir tomando toda muestra que se salga del rangon (-1,1) como dato nulo o faltante.
+
+Probadas mis funciones, he determinado que ningun valor en el cual se evalue Cn o Dn debe de ser menor al minimo de los
+valores y mayor al penultimo dato.
+
+
+#Dia 7-01-2024 11:39 pm
+
+He avanzado en el transcurso de los dias, sin embargo, hasta el dia de hoy tomo animos de escribir
+Ya realice ciertas pruebas con respecto a la T y pruebas con respecto a las copulas,
+he logrado simular las 5 copulas, he pensado entonces, Como rayos simulare la el estadistico de la hipotesis?
+y se me ha ocurrido simularlo bajo la hipotesis nula, o sea, Simularlo bajo el supuesto de que mi
+distribucion origen y la de prueba son la misma, para luego realizar boostraping, y con esto
+medir calidad del estimador, intervalos, valor-p y pontencia; entonces pues, deseo
+ver un ultimo ejemplo donde se comparen la gumbel-barnett y la farlei-gumbel-morgents,
+ya que veo que las estructuras son similares mas no iguales, pues, la GB tiene una dependencia muy debil
+en el recuadro superior del cuadrado unitario. Cualquier problema con el estadistico de Ledwina ha sido corregido,
+por lo cual, la muestra para 1000 no genera disparos de valores, debo seguir testiando para menores.
+
+
+#Dia 10-01-2024 5:13 pm
+
+Algo que se me olvido decir el dia atras, es que por fin consegui corregir los problemas que tenia con la copula de frank,
+lastimosamente copulas como la GH, FGM y la GB son copulas que necesitan de su generadora para ser simuladas. Ya cree un muestreador,
+ahora necesito generar m veces t y estimar por el tau de kendall.
+
+
+#Dia 11-01-2024 10:31 am
+
+Hoy me dispongo a avanzar con este tema de la maxima verosimilitud y por fin crear un generador de t, estoy tratando de crear
+la maxima verosimilitud para estimar el parametro, debido a que la forma del tau no siempre es cerrada. He logrado sacar
+la segunda derivada por medio del metodo de la matrix hessina, sin embargo, esto genera que el proceso sea mucho mas
+pesado que el deseado; si encuentro otro metodo para sacar la segunda derivada parcial, entonces, lo aplicare, por ahora es la primera prueba;
+la maximizacion por verosimilitud parece ser mucho mas pesado de lo pensado, por lo cual, se incluira en las pruebas finales del estudio,
+mientras se muestra la distribucion de t se dara un parametro deseado, ademas, aun no he creado el generador de T, no obstante,
+se creara el mismo dia de hoy, de momento, son las 12:56 pm.
+
+
+
+
+
+
+
+
+

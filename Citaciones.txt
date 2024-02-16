@@ -1,0 +1,10 @@
+@article{article,
+author = {Portilla Yela, Jennyfer and Tovar Cuevas, José},
+year = {2018},
+month = {06},
+pages = {53-73},
+title = {Estimating the Gumbel-Barnett Copula Parameter of Dependence},
+volume = {41},
+journal = {Revista Colombiana de Estadística},
+doi = {10.15446/rce.v41n1.64900}
+}

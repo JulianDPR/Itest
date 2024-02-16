@@ -1,0 +1,13 @@
+[distfit] >INFO> fit
+[distfit] >INFO> transform
+[distfit] >INFO> [norm      ] [0.00 sec] [RSS: 0.860713] [loc=1.150 scale=0.427]
+[distfit] >INFO> [expon     ] [0.00 sec] [RSS: 3.07249] [loc=0.453 scale=0.697]
+[distfit] >INFO> [pareto    ] [0.00 sec] [RSS: 3.07249] [loc=-67108863.547 scale=67108864.000]
+[distfit] >INFO> [dweibull  ] [0.02 sec] [RSS: 0.502896] [loc=1.080 scale=0.329]
+[distfit] >INFO> [t         ] [0.10 sec] [RSS: 0.485591] [loc=1.080 scale=0.311]
+[distfit] >INFO> [genextreme] [0.04 sec] [RSS: 0.0509279] [loc=0.949 scale=0.296]
+[distfit] >INFO> [gamma     ] [0.02 sec] [RSS: 0.0894841] [loc=0.415 scale=0.232]
+[distfit] >INFO> [lognorm   ] [0.00 sec] [RSS: 0.0491236] [loc=0.254 scale=0.809]
+[distfit] >INFO> [beta      ] [0.09 sec] [RSS: 0.102825] [loc=0.425 scale=647384.502]
+[distfit] >INFO> [uniform   ] [0.00 sec] [RSS: 4.60126] [loc=0.453 scale=2.829]
+[distfit] >INFO> [loggamma  ] [0.04 sec] [RSS: 0.917891] [loc=-135.588 scale=18.318]
