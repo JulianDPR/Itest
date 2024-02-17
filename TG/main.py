@@ -22,6 +22,7 @@ from distfit import distfit
 #
 import time as t
 import multiprocessing as mtp
+import threading as th
 
 #%% Own modules
 #from tools
@@ -71,31 +72,29 @@ if __name__ == "__main__":
         
         for j in parameters[i]:
             
-            k = 3
+            k = th.active_count()
             
-            m = 1200//k
+            m = 12//k
             
-            ptc = []
-            
-            return_ = mtp.Queue()
-            
-            T = []
+            # Create a results list to store the results
+            results = []
+
+            # Create and start a thread for each data chunk
+            threads = []
             
             for p in range(k):
                 
-                p_ = mtp.Process(target = t_gen, args=(m, n, i, parameters[i][j], return_, Cn))
+                thread = th.Thread(target=t_gen, args=(m, n, i, parameters[i][j], results, Cn))
                 
-                p_.start()
+                threads.append(thread)
                 
-                ptc.append(p_)
+                thread.start()
                 
-            for p in ptc:
+            for thread in threads:
                 
-                T += [return_.get()]
-                
-                p.join()
+                thread.join()
             
-            T = (np.array(T).ravel())[200:]
+            T = (np.array(results).ravel())
             
             fig, ax, results = fitdist(T, i+j)
             

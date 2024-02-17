@@ -286,8 +286,7 @@ def fitdist(sample, title = None):
 
 def t_gen(m, n, key, alpha, return_ ,empcop = Cn):
     
-    return_.put(list(map(lambda x: T_gen(n, key, alpha, Cn), range(m))))
-    
+    return_.append(list(map(lambda x: T_gen(n, key, alpha, Cn), range(m))))
 
     
 #%% Bootstrapping 

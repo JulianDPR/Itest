@@ -1,71 +1,30 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 16 10:46:39 2024
+import time
+import multiprocessing
+import threading
 
-@author: Julian
-"""
-
-from tools import Cn
-import numpy as np
-import scipy.stats as ss
-import time as t
-import pandas as pd
-import multiprocessing as mtp
-from tools import cn_gen
-
-#%%
-
+# Define the function representing the CPU-bound task
+def square_numbers(numbers):
+    return [x ** 2 for x in numbers]
 
 if __name__ == "__main__":
-    
-    a = t.time()
-    
-    
-    for i in range(8):
-        
-        cn_gen(1000)
-    
-    
-    b = t.time()
-    
-    print(b - a)
-    
-    
-    manager = mtp.Manager()
-    
-    return_dict = manager.dict()
-    
-    p1 = mtp.Process(target=cn_gen, args = (1000,))
-    p2 = mtp.Process(target=cn_gen, args = (1000,))
-    p3 = mtp.Process(target=cn_gen, args = (1000,))
-    p4 = mtp.Process(target=cn_gen, args = (1000,))
-    p5 = mtp.Process(target=cn_gen, args = (1000,))
-    p6 = mtp.Process(target=cn_gen, args = (1000,))
-    p7 = mtp.Process(target=cn_gen, args = (1000,))
-    p8 = mtp.Process(target=cn_gen, args = (1000,))
+    # Generate a large list of numbers
+    numbers = list(range(1, 1000001))  # 1 million numbers
 
-    a = t.time()
+    # Speed test using multiprocessing
+    start_time = time.time()
+    with multiprocessing.Pool(12) as pool:
+        result_multiprocessing = pool.map(square_numbers, [numbers])[0]
+    end_time_multiprocessing = time.time()
+    multiprocessing_time = end_time_multiprocessing - start_time
 
-    p1.start()
-    p2.start()
-    p3.start()
-    p4.start()
-    p5.start()
-    p6.start()
-    p7.start()
-    p8.start()
+    # Speed test using threading
+    start_time = time.time()
+    thread = threading.Thread(target=square_numbers, args=(numbers,))
+    thread.start()
+    thread.join()
+    end_time_threading = time.time()
+    threading_time = end_time_threading - start_time
 
-    p1.join()
-    p2.join()
-    p3.join()
-    p4.join()
-    p5.join()
-    p6.join()
-    p7.join()
-    p8.join()
-
-    b = t.time()
-    
-    print(b-a)
-
-
+    # Print the results
+    print("Time taken using multiprocessing:", multiprocessing_time)
+    print("Time taken using threading:", threading_time)
