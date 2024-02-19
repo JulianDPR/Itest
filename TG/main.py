@@ -21,7 +21,6 @@ import seaborn as sns
 from distfit import distfit
 #
 import time as t
-import multiprocessing as mtp
 import threading as th
 
 #%% Own modules
@@ -38,7 +37,9 @@ from tools import Escritor
 from tools import t_gen
 
 #%% T Generator
-n = 10
+np.random.seed(1914)
+
+n = 1000
 
 path = "C:/Users/Bienvenido/Desktop/TG/Imag"
 
@@ -58,7 +59,11 @@ parameters = pd.DataFrame(
         "fgm", 
              "gumbel_barnett"
              ],
-    columns = ["weak", "moderate", "strong"]
+    columns = [
+                "weak",
+               "moderate",
+               "strong"
+               ]
     ).T
 
 parameters = parameters.to_dict()
@@ -72,29 +77,31 @@ if __name__ == "__main__":
         
         for j in parameters[i]:
             
-            k = th.active_count()
+            #k = th.active_count()
             
-            m = 12//k
+            m = 1100#//k
             
             # Create a results list to store the results
             results = []
 
             # Create and start a thread for each data chunk
-            threads = []
+            #threads = []
             
-            for p in range(k):
+            #for p in range(k):
                 
-                thread = th.Thread(target=t_gen, args=(m, n, i, parameters[i][j], results, Cn))
+              #  thread = th.Thread(target=t_gen, args=(m, n, i, parameters[i][j], results, Cn))
                 
-                threads.append(thread)
+              #  threads.append(thread)
                 
-                thread.start()
+              #  thread.start()
                 
-            for thread in threads:
+           # for thread in threads:
                 
-                thread.join()
+                #thread.join()
+                
+            t_gen(m, n, i, parameters[i][j], results)
             
-            T = (np.array(results).ravel())
+            T = (np.array(results).ravel())[:1000]
             
             fig, ax, results = fitdist(T, i+j)
             
@@ -106,13 +113,19 @@ if __name__ == "__main__":
                 
                 Escritor(path+"/"+i+"/"+"resultados.xlsx", results["summary"], Name=j, index = False, 
                          mode = "w")
+                
+                Escritor(path+"/"+i+"/"+"muestra.xlsx", pd.Series(T), Name=j, index = False, 
+                         mode = "w")
             
             else:
                 
                 Escritor(path+"/"+i+"/"+"resultados.xlsx", results["summary"], Name=j, index = False)
+                
+                Escritor(path+"/"+i+"/"+"muestra.xlsx", pd.Series(T), Name=j, index = False)
+                
     end = t.time()
 
-    print(end-start)     
+    print("Total Horas de trabajo: %.4f"%((end-start)/60/60))     
 
 
 #%%

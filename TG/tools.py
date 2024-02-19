@@ -17,6 +17,7 @@ import scipy.optimize as so
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numdifftools as nd
+import threading as th
 
 #%% Copulas modules
 from Copulas.clayton import Clayton
@@ -93,7 +94,8 @@ def Dn(XY, u, v):
     
     n, R, S = ranks(XY)
     
-    dn = ((R/n <= u)*(S/n <= v)).sum()/n
+    dn = np.sum((R / (n) <= u[:, None]) & (S / (n) <= v[:, None]),
+                axis=1)/n
     
     return dn
     
@@ -103,7 +105,8 @@ def Cn(XY, u, v):
     
     n, R, S = ranks(XY)
     
-    cn = ((R/(n+1) <= u)*(S/(n+1) <= v)).sum()/(n)
+    cn = np.sum((R / (n + 1) <= u[:, None]) & (S / (n + 1) <= v[:, None]),
+                axis=1)/n
     
     return cn
 
@@ -114,8 +117,6 @@ def Qn(XY, u, v, function):
     w = np.sqrt(u*(1-u)*v*(1-v))
     
     pi = u*v
-    
-    function = np.vectorize(function, excluded=[0])
     
     fn = function(XY, u, v)
     
@@ -173,7 +174,44 @@ def sample(n, key, alpha):
         
         from Copulas.gumbel_barnett import inv_Gumbel_Barnett
         
-        u, v = inv_Gumbel_Barnett(v1, v2, alpha)
+        Th = []
+        
+        result = []
+        
+        k = th.active_count()
+        
+        n_ = n//k
+        
+        
+        def quick(g, x):
+            
+            x.append(inv_Gumbel_Barnett(v1[g[0]:g[1]],
+                                        v2[g[0]:g[1]],
+                                        alpha))
+        
+        
+        for i in range(k):
+            
+            thread = th.Thread(target = quick,
+                               args = ([n_*i, n_*(i+1)],
+                                       result))
+            Th.append(thread)
+        
+            thread.start()
+            
+        for i in Th:
+            
+            i.join()
+        
+        #print(result)
+        
+        result = np.array(result).reshape(n, 2)
+        
+        u = result[:, 0]
+        
+        v = result[:, 1]
+        
+        #print(u, v)
         
     elif key == "fgm":
         
@@ -263,7 +301,13 @@ def T_gen(n, key, alpha, empcop = Cn):
     
     
     return ((q_-qn_)**2).sum()
+#%%
+
+def t_gen(m, n, key, alpha, return_ ,empcop = Cn):
     
+    return_.append(list(map(lambda x: T_gen(n, key, alpha, Cn), range(m))))
+
+
 #%% Distfit
 
 def fitdist(sample, title = None):
@@ -282,11 +326,6 @@ def fitdist(sample, title = None):
     
     return fig, ax, results
 
-#%%
-
-def t_gen(m, n, key, alpha, return_ ,empcop = Cn):
-    
-    return_.append(list(map(lambda x: T_gen(n, key, alpha, Cn), range(m))))
 
     
 #%% Bootstrapping 
