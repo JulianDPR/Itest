@@ -54,31 +54,34 @@ from tools import bias_plot
 from findiff import FinDiff
 from tools import c3
 # Ttest
-from tools import Ttest
-from tools import Pow_Conf
+from tools import Ttest_
+#from tools import Pow_Conf
 from tools import T
+from tools import Pow_Conf_
 from tools import fitdist2
+
+from Copulas.fgm import FGM
 #%% Objetivo 1
 path = "C:/Users/julia/OneDrive/Desktop/TG/Imag"
 
-Tg = False
+Tg = True
 
 n = [
-    #30,
+   # 30,
     # 50,
-    #  100,
+      100,
     # 500,
-     1000
+    # 1000
      ]
 
 m = 1100#//k
 
 names = [
-   "gumbel_barnett",
+   #"gumbel_barnett",
    # "clayton",
-   #  "frank", 
-   #  "gumbel_hougaard",
-   #  "fgm"
+    # "frank", 
+     #"gumbel_hougaard",
+     "fgm"
          ]
 
 dependence =  [
@@ -89,11 +92,11 @@ dependence =  [
 
 parameters = pd.DataFrame(
     [
-    [.2, .5, .9],
-    #  [0.5, 2, 8],
-    # [1.86, 5.73, 18.19],
-    # [1.25, 2, 5],
-    # [.2, .5, .9]
+    #[.2, .5, .9],
+    #[.5, 2, 8],
+    #[1.86, 5.73, 18.19],
+    #[1.25, 2, 5],
+    [.2, .5, .9]
      ],
     index = names,
     columns = dependence
@@ -109,6 +112,7 @@ for i in parameters.keys():
     ax = ax.ravel()
     
     for j,k in zip(parameters[i].keys(),ax):
+        #print(parameters[i][j])
         u,v = sample(1000, i, parameters[i][j])
         k.scatter(x=u, y=v,
                         marker=".",
@@ -262,17 +266,24 @@ if __name__ == "__main__":
     fig, ax = plt.subplot_mosaic([["top"]*4,
                               ["bottom1","bottom2","bottom3","bottom4"]],
                               figsize=(16, 8))
-    sns.histplot(T_sample["gumbel_barnett"]["weak"]["30"], ax = ax["top"], color = "dimgrey")
+    sns.histplot(T_sample["fgm"]["weak"]["100"], ax = ax["top"], color = "dimgrey")
     ax["top"].set_title("Distribución de las réplicas del indicador")
     ax["top"].set_xlabel("")
     ax["top"].set_ylabel("Frecuencia absoluta", fontsize=12)
-    b = [np.random.choice(T_sample["gumbel_barnett"]["weak"]["30"], size = 1000) for i in range(4)]
+    b = [np.random.choice(T_sample["fgm"]["weak"]["100"], size = 1000) for i in range(4)]
     for i,j in zip(b, list(ax.keys())[1:]):
-        tc = T_gen(30, "fgm", -1)
-        g = pd.DataFrame([i, i>tc], index = ["Values", "Cond"]).T
+        
+        u, v = sample(100, "clayton", 1)
+        tc = ((Qn(pd.DataFrame(dict(x=u,y=v)), u, v,Cn)-Q(u, v, FGM, [.2])
+               )**2).sum()
+        g = pd.DataFrame([i,
+            i>=np.quantile(i, 0.95)], index = ["Values", "Cond"]).T
         sns.histplot(x="Values", data = g, hue = "Cond" ,ax = ax[j],
                       palette = ["dimgrey", "darkred"])
-        
+        ax[j].vlines(np.quantile(i, 0.95),*ax[j].get_ylim(),
+                     label= "Limite superior", color = "red")
+        ax[j].vlines(tc,*ax[j].get_ylim(),
+                     label= "Valor calculado", color = "green")
         ax[j].set_title(f"Submuestra-(k) = ({list(ax.keys()).index(j)})")
         ax[j].set_xlabel("")
         ax[j].set_ylabel("")
@@ -351,26 +362,141 @@ if __name__ == "__main__":
 
     IE = df.quantile([0.025,0.975]).T
 
-    Iln = np.array(ss.lognorm(k.iloc[:,3]**(1/2),
-                              0,
-        np.exp(k.iloc[:,2])).interval(0.95)).T
 
-    Igum = np.array(ss.genextreme(0,
-        k.iloc[:,4],
-        k.iloc[:,5]).interval(0.95)).T
+#%% Confidence
 
-# Prueba de hipótesis (Distribución y empíricos)
-
-    u,v = sample(100,"clayton", 2)
-
-    r = Ttest(pd.DataFrame(dict(x=u,y=v)),
-              "frank",
-              RD = True)
+    prue_conf = pd.DataFrame(columns = ["n", 
+                                        "H_0",
+                                    "Dependencia",
+                                        "Valor-p"])
+    list_conf = []
     
-    print(r.T)
-# Confianza según la muestra (Comparativa con Distribución ,Genest y River)
-# Potencia según la muestra (Comparativa con Distribución ,Genest y River)
-    
-
-#%% Generar escenarios de simulación
+    cond = 3
    
+    for i,j,k in zip(n_, name_, pars_):
+        
+        for t in np.array(names)[np.isin(names,[j])]:
+            
+            while True:
+            
+                try:
+                    
+                    sample_uv = pd.DataFrame(sample(i, j,
+                                                parameters[j][k]),
+                                         index = ["x","y"]).T
+                
+                    list_conf.append([i, j, k, 
+                              Pow_Conf_(sample_uv,
+                                       tkey=t,
+                                       m_resamples=1000)
+                              ])
+                    
+                    cond = 3
+                    
+                    break
+                
+                except:
+                    
+                    cond -= 1
+                    
+                    print(cond)
+                    
+                    if cond == 0:
+                    
+                        cond = 3
+                        
+                        break
+                    
+            
+    prue_conf = pd.DataFrame(np.array(list_conf), columns = prue_conf.columns)
+     
+    tab_conf = pd.pivot_table(prue_conf,
+                            values = "Valor-p",
+                            index = ["H_0",
+                                     "Dependencia"],
+                            columns = ["n"], aggfunc="sum")
+#%% Power 
+
+    cond = 3
+
+    prue_pot = pd.DataFrame(columns = ["n", 
+                                        "H_0",
+                                        "Dependencia",
+                                        "H_1",
+                                        "Valor-p"])
+    
+    list_pot = []
+ 
+    copula = "fgm"   
+ 
+    for i,j,k in zip(n_[name_==copula],
+                     name_[name_==copula], pars_[name_==copula]):
+        
+        
+        for t in np.array(names)[~np.isin(names,[j])]:
+            
+            while True:
+                    
+                try: 
+                    
+                    sample_uv = pd.DataFrame(sample(i, j,
+                                                parameters[j][k]),
+                                         index = ["x","y"]).T
+                    
+                    list_pot.append([i, j, k, t,
+                             Pow_Conf_(sample_uv,
+                                      tkey = j,
+                                      m_resamples=1000,
+                                      key = t)
+                             ])
+                    
+                    cond = 3
+                    
+                    break
+                
+                except:
+                    
+                    try:
+                        
+                        sample_uv = pd.DataFrame(sample(i, j,
+                                                    -parameters[j][k]),
+                                             index = ["x","y"]).T
+                        
+                        list_pot.append([i, j, k, t,
+                                 Pow_Conf_(sample_uv,
+                                          tkey = j,
+                                          m_resamples=1000,
+                                          key = t)
+                                 ])
+                        
+                        cond = 3
+                        
+                        break
+                        
+                    except:
+                        
+                        cond -= 1
+                        
+                        if cond == 0:
+                            
+                            cond = 3
+                            
+                            break
+                    
+                    cond -= 1
+                    
+                    #print(cond)
+                    
+                    if cond == 0:
+                        
+                        cond = 3
+                        
+                        break
+                    
+    prue_pot = pd.DataFrame(np.array(list_pot), columns = prue_pot.columns)
+    
+    tab_pot = pd.pivot_table(prue_pot,
+                             values = "Valor-p",
+                             index = ["H_0", "Dependencia","n"],
+                             columns = ["H_1"], aggfunc="sum")
+         

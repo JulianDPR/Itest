@@ -9,6 +9,7 @@ Created on Sat Dec 30 21:58:24 2023
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import statsmodels.stats as sta
 import statsmodels.formula.api as sfa
 import statsmodels.api as sa
@@ -19,6 +20,7 @@ import seaborn as sns
 import numdifftools as nd
 from findiff import FinDiff
 import threading as th
+from tqdm import tqdm, auto
 from distfit import distfit
 
 #%% Copulas modules
@@ -45,35 +47,71 @@ def Escritor(Doc,DataFrame,Name,index=True,over_repla="overlay",srow=0,scol=0,mo
 
 #%% Ranks
 
-def ranks(XY):
+# def ranks(XY):
     
-    """
-    XY : DataFrame with n samples u and v
+#     """
+#     XY : DataFrame with n samples u and v
     
-    Return : The ranks statistics
-    of u and v and lenght sample
-    """
-    try: 
+#     Return : The ranks statistics
+#     of u and v and lenght sample
+#     """
+#     try: 
          
+#         n = XY.shape[0]
+        
+#         #R = XY.sort_values(by="x").reset_index().reset_index().sort_values(by="index").level_0.values + 1
+        
+#         R = XY.x.rank(method="average").values
+        
+#         #S = XY.sort_values(by="y").reset_index().reset_index().sort_values(by="index").level_0.values + 1
+        
+#         S = XY.y.rank(method="average").values
+        
+#         return n, R, S
+    
+#     except:
+        
+#         raise Exception("DF with columns names (x,y)")
+        
+        
+def ranks(XY, polars=False):
+    
+    """
+    XY: DataFrame with n samples u and v
+    Return: The ranks statistics of u and v,
+    furthermore length sample
+    polars: Default is False (DataFrame is pandas)
+    """
+    
+    try:
+        
         n = XY.shape[0]
         
-        #R = XY.sort_values(by="x").reset_index().reset_index().sort_values(by="index").level_0.values + 1
-        
-        R = XY.sort_values(by='x').reset_index().sort_values(by='index').reset_index().groupby('x')[['level_0']].transform('mean').values.ravel()+1
-        
-        #S = XY.sort_values(by="y").reset_index().reset_index().sort_values(by="index").level_0.values + 1
-        
-        S = XY.sort_values(by='y').reset_index().sort_values(by='index').reset_index().groupby('y')[['level_0']].transform('mean').values.ravel()+1
-        
-        return n, R, S
-    
+        if polars:
+            
+            r = XY.select(
+                pl.all().rank(
+                method="average"
+                                        )
+                )
+            
+            return n, r["x"].to_numpy(), r["y"].to_numpy()
+            
+        else:
+            
+            R = XY.x.rank().values
+            S = XY.y.rank().values
+            
+            return n, R, S
     except:
         
         raise Exception("DF with columns names (x,y)")
+        
+        
 
 #%% Escale the sample
         
-def u_v(XY):
+def u_v(XY, polars=False):
     
     """
     XY : DataFrame with n samples x and y
@@ -81,7 +119,7 @@ def u_v(XY):
     Return : u and v
     """
     
-    n, R, S = ranks(XY)
+    n, R, S = ranks(XY, polars)
     
     return R/(n), S/(n)    
     
@@ -90,7 +128,7 @@ def u_v(XY):
 
 # Biased
 
-def Dn(XY, u, v):
+def Dn(XY, u, v, polars=False):
     
     """
     XY: Dataframe with n samples from x and y
@@ -101,7 +139,7 @@ def Dn(XY, u, v):
     
     """
     
-    n, R, S = ranks(XY)
+    n, R, S = ranks(XY, polars)
     
     dn = np.sum((R / (n) <= u.reshape(-1,1)) & (S / (n) <= v.reshape(-1,1)),
                 axis=1)/n
@@ -110,7 +148,7 @@ def Dn(XY, u, v):
     
 # Unbiased
 
-def Cn(XY, u, v):
+def Cn(XY, u, v, polars=False):
     
     """
     XY: Dataframe with n samples from x and y
@@ -121,7 +159,7 @@ def Cn(XY, u, v):
     
     """
     
-    n, R, S = ranks(XY)
+    n, R, S = ranks(XY, polars)
     
     cn = np.sum((R / (n + 1) <= u[:, None]) & ((S / (n + 1)) <= v[:, None]),
                 axis=1)/n
@@ -130,7 +168,7 @@ def Cn(XY, u, v):
 
 #%% Empirical q
 
-def Qn(XY, u, v, function, GR = False):
+def Qn(XY, u, v, function, GR = False, polars=False):
     
     """
     XY: Dataframe with n samples from x and y
@@ -147,7 +185,7 @@ def Qn(XY, u, v, function, GR = False):
     
     pi = u*v
     
-    fn = function(XY, u, v)
+    fn = function(XY, u, v, polars)
     
     if GR:
         
@@ -213,6 +251,8 @@ def sample(n, key, alpha, threading = True, cython = False):
         
         from Copulas.clayton import inv_Clayton
         
+        #alpha = alpha/((-1<=alpha<float("inf") and (alpha!=0)))
+        
         u = v1
         
         v = inv_Clayton(u, v2, alpha)
@@ -220,6 +260,8 @@ def sample(n, key, alpha, threading = True, cython = False):
     elif key == "gumbel_hougaard":
         
         from Copulas.gumbel_hougaard import inv_Gumbel_Hougaard
+        
+        #alpha = alpha/(alpha>=1)
         
         x = ss.levy_stable(1/alpha,
                             1,
@@ -232,6 +274,8 @@ def sample(n, key, alpha, threading = True, cython = False):
         
         from Copulas.frank import inv_Frank
         
+        #alpha = alpha/(((alpha>-float("inf") and alpha < float("inf")) and (alpha != 0)))
+        
         u = v1
         
         v = inv_Frank(u, v2, alpha)
@@ -242,6 +286,8 @@ def sample(n, key, alpha, threading = True, cython = False):
             from TG.gumbel_barnett import inv_Gumbel_Barnett_cython as inv_Gumbel_Barnett    
         else:
             from Copulas.gumbel_barnett import inv_Gumbel_Barnett
+        
+        #alpha = alpha/((alpha>=0) and (alpha<=1))
         
         n__ = np.array([
              36,
@@ -322,6 +368,8 @@ def sample(n, key, alpha, threading = True, cython = False):
         
         from Copulas.fgm import inv_FGM
         
+        #alpha = alpha/(-1<= alpha <= 1)
+        
         u, v = inv_FGM(v1, v2, alpha)
         
     else:
@@ -329,7 +377,7 @@ def sample(n, key, alpha, threading = True, cython = False):
         raise Exception("La copula no esta dentro del estudio")
         
     #print(len(u), len(v), n__)    
-    
+      
     return u,v
 #%% max log-likehood
 def Diff(u, v, g, h=1e-6):
@@ -657,7 +705,8 @@ def T_gen(n, key, alpha, empcop = Cn, threading = True, dist_key = None, dist_pa
         return ((q_-qn_)**2).sum()
 
 
-def t_gen(m, n, key, alpha, return_ ,empcop = Cn, threading = True, GR = False, random_seed = 1927):
+def t_gen(m, n, key, alpha, return_ ,empcop = Cn, threading = True,
+          GR = False, random_seed = 1927, tqdm_ = None):
     
     """
     m: T sample size
@@ -678,7 +727,14 @@ def t_gen(m, n, key, alpha, return_ ,empcop = Cn, threading = True, GR = False, 
     
     np.random.seed(random_seed)
     
-    return_.append(list(map(lambda x: T_gen(n, key, alpha,
+    if tqdm_ :
+        
+        return_.append(list(map(lambda x, y: T_gen(n, key, alpha,
+                                                Cn, threading,
+                                                GR = GR), range(m), tqdm(range(m-1)))))
+    else:
+        
+        return_.append(list(map(lambda x: T_gen(n, key, alpha,
                                             Cn, threading,
                                             GR = GR), range(m))))
 
@@ -1068,25 +1124,32 @@ def bias_plot(sample, title = "", path = None):
     
     ax = ax.ravel()
     
-    var = Bias["var"].T[["Vln","Vgum"]]
+    bias_ = (Bias["bias"].T[["Bln","Bgum"]])**(1/2)
     
     mse = Bias["mse"].T[["Mln","Mgum"]]
     
-    n = np.array(list(var.index), dtype="float64").ravel()
+    n = np.array(list(bias_.index), dtype="float64").ravel()
     
     #print(n)
     
-    ((n**(1/2)).reshape(-1,1)*var).plot(kind = "line",
-                                        marker = ".",
-                                        ax = ax[0], color=["teal", "tomato", "springgreen"])
+    (bias_).plot(kind = "line", marker = ".",
+                ax = ax[0], color=["teal", "tomato", "springgreen"])
     
-    ax[0].set_title(r"Eficiencia $\lim_{n\to\infty}\sqrt{n}*var[{\hat\Lambda}]$")
+    ax[0].set_title(r"Sesgo $\hat\lambda - E[\hat\Lambda]$")
+    
+    X0 = ax[0].get_xlim()
+    
+    ax[0].hlines(0, *X0, linestyle="--", color = "black")
     
     ax[0].grid()
     
     mse.plot(kind = "line", marker = ".", ax = ax[1],  color=["teal", "tomato", "springgreen"])
     
-    ax[1].set_title(r"Consistencia $E[({\hat\lambda}-\hat\Lambda)^{2}]$")
+    ax[1].set_title(r"MSE $E[({\hat\lambda}-\hat\Lambda)^{2}]$")
+    
+    X1 = ax[1].get_xlim()
+    
+    ax[1].hlines(0, *X1, linestyle="--", color = "black")
     
     ax[1].grid()
     
@@ -1422,6 +1485,15 @@ def maxkt(XY, n, function, kt, plim, lim, argmax = argmax):
 #%% T test
 
 def T(XY, u, v, function ,alpha):
+    """
+    XY: Sample
+    u: Rank of X
+    v: Rank of Y
+    function: Copula function
+    alpha: Parameter
+    
+    return: Statistic
+    """
     
     qn = Qn(XY, u, v, Cn)
     
@@ -1435,7 +1507,34 @@ def T(XY, u, v, function ,alpha):
     
     return t_c
 
-def Ttest(sample, key, n_bootst=1000, RD = False):
+
+def Testimation(sample_, key, kt_ = None):
+    
+    """
+    sample: DataFrame bivariate random sample
+    key: Possible copula to estimate parameter
+    return: Parameters estimation
+    """
+    if not kt_:
+        
+        kt = ss.kendalltau(*sample_)[0]
+    
+    else:
+        
+        kt = kt_
+    
+    function, lim, plim = kv(key, kt)
+    
+    XY = pd.DataFrame(sample_, index = ["x","y"]).T
+    
+    a0, alpha = maxkt(XY, XY.shape[0], function,
+                      kt, 
+                      plim,
+                      lim)
+    
+    return XY, a0, alpha, function
+
+def Ttest_(sample_, key, n_bootst = 1000):
     
     """
     sample: DataFrame bivariate random sample
@@ -1447,111 +1546,106 @@ def Ttest(sample, key, n_bootst=1000, RD = False):
     
     """
     
-    sample = np.array(u_v(sample))
+    sample_ = np.array(u_v(sample_))
     
-    #print(sample)
+    XY, a0, alpha, function = Testimation(sample_, key)
     
     return_ = []
     
-    m = n_bootst
+    t_gen(int(n_bootst*1.1), XY.shape[0],
+          key, alpha, return_)
     
-    n = sample.shape[1]
+    t_sam = np.array(return_).ravel()[:n_bootst]
     
-    kt = ss.kendalltau(*sample)[0]
+    t_c = T(XY, sample_[0], sample_[1], function,
+            alpha)
     
-    function, lim, plim = kv(key, kt)
-        
-    XY = pd.DataFrame(dict(x=sample[0], y=sample[1]))
+    Ptc = (t_sam >= t_c).mean()
     
-    #print(sample)
-    #print(kt)
-    a0, alpha = maxkt(XY, n, function, kt, plim, lim)
-    #print(a0)
-    #print(alpha)
-    
-    #print(n)
-    
-    t_gen(int(m*1.1), n, key, alpha, return_)
-    
-    t_sam = np.array(return_).ravel()[:m]
-    
-    t_c = T(XY, sample[0], sample[1], function, alpha)
-    
-    Ptc = (t_sam>=t_c).sum()/m
-    
-    if RD:
-        
-        k = moms(t_sam)
-        
-        ln = ss.lognorm(k["ln_b"]**(1/2), 0, np.exp(k["ln_m"]))
+    return pd.DataFrame(dict(theta = [alpha], theta_t = [a0],
+                             t_c = [t_c], 
+                             Pvalue = [Ptc]))
 
-        gum = ss.genextreme(0, k["gum_m"], k["gum_b"])        
+def Pow_Conf_(sample_, tkey, confidence = 0.95,
+              n_bootst = 1000, key = None, m_resamples = 1000):
+    
+    """
+    sample: DataFrame bivariate random sample
+    key: Possible copula
+    n_bootst: Bootstrap sample from real values of statistic
+    
+    return: Sample statistic, Pvalue of statistic,
+    Kendall's Tau, Copula Parameter
+    """
+    
+    Sample = np.array(u_v(sample_))
+    
+    # tkey estimation 
+    
+    XY, a0, alpha, function = Testimation(Sample, tkey)
+    
+    return_ = []
+    
+    t_gen(int(m_resamples*1.1), XY.shape[0],
+          tkey, alpha, return_)
+    
+    t_sam = np.array(return_).ravel()[:n_bootst]
+    #-----------------
+    t_bootst = Bootsttrap(t_sam, k=n_bootst)
+    
+    if not key:
         
-        return pd.DataFrame(dict(Tc = t_c,
-                             PvalueTc = Ptc,
-                             Pvalueln = ln.sf(t_c),
-                             Pvaluegum = gum.sf(t_c),
-                             EKT = kt,
-                             itaualpha = a0,
-                             mlealpha = alpha,
-                             PKT = k_t(function, alpha, 1000).round(4)),
-                        index = ["Results"])
+        uv = list(map(lambda x: pd.DataFrame(sample(XY.shape[0], tkey, 
+                                                     alpha),
+                                              index = ["x","y"]).T
+                        ,range(n_bootst)))
+        
+        t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha),
+                       uv))
+        
+    
+        #nbTest = (t_bootst>=np.array(t_c)).mean(axis=0)
+    
+        nbTest = Bootsttrap(np.quantile(t_bootst, confidence, axis=0), n_bootst)>Bootsttrap(np.array(t_c), n_bootst)
+    
+        #return (nbTest>(1-confidence)).mean()
+        
+        return nbTest.mean()
     
     else:
         
-        return pd.DataFrame(dict(Tc = t_c,
-                             PvalueTc = Ptc,
-                             EKT = kt,
-                             itaualpha = a0,
-                             mlealpha = alpha,
-                             PKT = k_t(function, alpha, 1000).round(4)),
-                        index = ["Results"])
+        #key estimation
+        
+        XY1, a1, alpha1, function1 = Testimation(Sample, key,
+                                              k_t(function, alpha))
+        
+        
+        uv = list(map(lambda x: pd.DataFrame(sample(XY1.shape[0], key, 
+                                                     alpha1),
+                                              index = ["x","y"]).T
+                        ,range(n_bootst)))
+        
+        t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha),
+                       uv))    
+        #nbTest = (t_bootst>=np.array(t_c)).mean(axis=0)
     
+        nbTest = Bootsttrap(np.quantile(t_bootst, confidence, axis=0), n_bootst) <= Bootsttrap(np.array(t_c), n_bootst)
     
-    
-    
-
-def Pow_Conf(sample_, tkey, m_resamples=1000, RD = False, key = None,
-             calpha = 0.05, n_bootst = 1000):
-    
-    sample_ = np.array(u_v(sample_))
-    
-    #print(sample)
-    
-    return_ = []
-    
-    m = m_resamples
-    
-    n = sample_.shape[1]
-    
-    # Estimation of parameters (It's slower)
-    
-    kt = ss.kendalltau(*sample_)[0]
-    
-    function, lim, plim = kv(tkey, kt)
-     
-    #print(function)
-    
-    XY = pd.DataFrame(dict(x=sample_[0], y=sample_[1]))
-    
-    #print(sample)
-    #print(kt)
-    a0, alpha = maxkt(XY, n, function, kt, plim, lim)
-    
-    # Simulate T (It's slower)
-    
-    t_gen(int(m*1.1), n, tkey, alpha, return_)
-    
-    t_sam = np.array(return_).ravel()[:m]
-    
-    # Take T simulations and do resamples of T
+        #return (nbTest<=(1-confidence)).mean()
+        
+        return nbTest.mean()
+        
+#%%
+def conf_pow(Sample,t_sam, n_bootst,
+             alpha, function, tkey,
+             key = None,
+             confidence = 0.95):
     
     t_bootst = Bootsttrap(t_sam, k=n_bootst)
     
-    # If RD is true, make RD simulate and take it for RD test
-    # Take the parameter and do Simulate of new values of U y V
+    n = Sample.shape[0]
     
-    if key == None:
+    if not key:
         
         uv = list(map(lambda x: pd.DataFrame(sample(n, tkey, 
                                                      alpha),
@@ -1561,39 +1655,33 @@ def Pow_Conf(sample_, tkey, m_resamples=1000, RD = False, key = None,
         t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha),
                        uv))
         
+        #nbTest = (t_bootst>=np.array(t_c)).mean(axis=0)
     
-        nbTest = (t_bootst>np.array(t_c)).mean(axis=0)
+        nbTest = np.quantile(t_bootst, confidence, axis=0)>np.array(t_c)
     
+        #return (nbTest>(1-confidence)).mean()
+        
+        return nbTest.mean()
     
-        return (nbTest>calpha).mean()
+    else:
         
-    # For the power evalue P(Tr>trc)<alpha
-    
-    elif key !=None:
+        #key estimation
         
-        kt = ss.kendalltau(*sample_)[0]
+        XY1, a1, alpha1, function1 = Testimation(Sample, key,
+                                              k_t(function, alpha))
         
-        function, lim, plim = kv(key, kt)
-            
-        XY = pd.DataFrame(dict(x=sample_[0], y=sample_[1]))
-        
-        #print(sample)
-        #print(kt)
-        a0, alpha = maxkt(XY, n, function, kt, plim, lim)
         
         uv = list(map(lambda x: pd.DataFrame(sample(n, key, 
-                                                     alpha),
+                                                     alpha1),
                                               index = ["x","y"]).T
                         ,range(n_bootst)))
         
         t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha),
-                       uv))
+                       uv))    
+        #nbTest = (t_bootst>=np.array(t_c)).mean(axis=0)
     
-        nbTest = (t_bootst>np.array(t_c)).mean(axis=0)
+        nbTest = np.quantile(t_bootst, confidence, axis = 0) <= np.array(t_c)
     
-    
-        return (nbTest<=calpha).mean()
+        #return (nbTest<=(1-confidence)).mean()
         
-    # For the confidence evalue P(Tr>trc)>=alpha
-    
-    #Resultados clayton/frank n=1000, theta = 8, conf = .946 pow = 0.388
+        return nbTest.mean()
