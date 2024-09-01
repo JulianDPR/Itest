@@ -283,10 +283,10 @@ def sample(n, key, alpha, threading = True,
         
     elif key == "gumbel_barnett":
         
-        if cython:
-            from TG.gumbel_barnett import inv_Gumbel_Barnett_cython as inv_Gumbel_Barnett    
-        else:
-            from Copulas.gumbel_barnett import inv_Gumbel_Barnett
+        #if cython:
+         #   from TG.gumbel_barnett import inv_Gumbel_Barnett_cython as inv_Gumbel_Barnett    
+        
+        from Copulas.gumbel_barnett import inv_Gumbel_Barnett
         
         #alpha = alpha/((alpha>=0) and (alpha<=1))
         
