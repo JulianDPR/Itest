@@ -23,8 +23,13 @@ def Gumbel_Barnett(XY, alpha, diff = False):
             -alpha*np.log(1-x)*np.log(1-y))
     
     else:
-        return XY.x+XY.y-1+(1-XY.x)*(1-XY.y)*np.exp(
-        -alpha*np.log(1-XY.x)*np.log(1-XY.y)
+        
+        x = XY["x"]
+        
+        y = XY["y"]
+        
+        return x+y-1+(1-x)*(1-y)*np.exp(
+        -alpha*np.log(1-x)*np.log(1-y)
         )
 
 def Gumbel_Barnett_2(UV, alpha):

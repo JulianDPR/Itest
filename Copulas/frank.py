@@ -25,8 +25,12 @@ def Frank(XY, alpha, diff = False):
         
     else:
     
-        return -(1/alpha)*np.log(1 + ((np.exp(-alpha*XY.x)-1)*
-                                  (np.exp(-alpha*XY.y)-1)/
+        x = XY["x"]
+        
+        y = XY["y"]
+        
+        return -(1/alpha)*np.log(1 + ((np.exp(-alpha*x)-1)*
+                                  (np.exp(-alpha*y)-1)/
                                   (np.exp(-alpha)-1)))
 
 def inv_Frank(u, c, alpha):

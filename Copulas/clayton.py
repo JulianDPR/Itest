@@ -26,7 +26,12 @@ def Clayton(XY, alpha, diff = False):
         return (x**(-alpha)+y**(-alpha)-1)**(-1/alpha)
     
     else:
-        return (XY.x**(-alpha)+XY.y**(-alpha)-1)**(-1/alpha)
+        
+        x = XY["x"]
+        
+        y = XY["y"]
+
+        return (x**(-alpha)+y**(-alpha)-1)**(-1/alpha)
 
 #generator
 

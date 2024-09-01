@@ -23,7 +23,11 @@ def FGM(XY, alpha, diff = False):
         
     else:
         
-        return XY.x*XY.y*(1+alpha*(1-XY.x)*(1-XY.y))
+        x = XY["x"]
+        
+        y = XY["y"]
+        
+        return x*y*(1+alpha*(1-x)*(1-y))
 
 def inv_FGM(v1, v2, alpha):
     

@@ -28,7 +28,11 @@ def Gumbel_Hougaard(XY, alpha, diff = False):
     
     else:
         
-        return np.exp(-((-np.log(XY.x))**alpha + (-np.log(XY.y))**alpha)**(1/alpha))
+        x = XY["x"]
+        
+        y = XY["y"]
+        
+        return np.exp(-((-np.log(x))**alpha + (-np.log(y))**alpha)**(1/alpha))
 
 def inv_Gumbel_Hougaard(v1, v2, x, alpha):
     

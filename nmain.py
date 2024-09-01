@@ -14,13 +14,14 @@ import statsmodels.stats as sts
 import numpy as np
 import numpy.linalg as nl
 import pandas as pd
+import polars
 #Graphics
 import matplotlib.pyplot as plt
 import seaborn as sns
 #Fit
 from distfit import distfit
 #
-import time as t
+import time
 import threading as th
 
 #%% Own modules
@@ -64,23 +65,25 @@ from Copulas.fgm import FGM
 #%% Objetivo 1
 path = "C:/Users/julia/OneDrive/Desktop/TG/Imag"
 
-Tg = True
+Tg = False
+color = "#1b1b53"
+GR = False
 
 n = [
-   # 30,
-    # 50,
+    30,
+     50,
       100,
-    # 500,
-    # 1000
+    500,
+     1000
      ]
 
 m = 1100#//k
 
 names = [
-   #"gumbel_barnett",
-   # "clayton",
-    # "frank", 
-     #"gumbel_hougaard",
+   "gumbel_barnett",
+    "clayton",
+     "frank", 
+     "gumbel_hougaard",
      "fgm"
          ]
 
@@ -92,10 +95,10 @@ dependence =  [
 
 parameters = pd.DataFrame(
     [
-    #[.2, .5, .9],
-    #[.5, 2, 8],
-    #[1.86, 5.73, 18.19],
-    #[1.25, 2, 5],
+    [.2, .5, .9],
+    [.5, 2, 8],
+    [1.86, 5.73, 18.19],
+    [1.25, 2, 5],
     [.2, .5, .9]
      ],
     index = names,
@@ -117,7 +120,7 @@ for i in parameters.keys():
         k.scatter(x=u, y=v,
                         marker=".",
                         facecolors="none",
-                        edgecolors="darkcyan",
+                        edgecolors=color,
                         #label=r"$\theta = $"+f"{parameters[i][j]}",
                         s=30
                         )
@@ -145,7 +148,7 @@ if __name__ == "__main__":
 
 #%%
     
-    start = t.time()
+    #start = time.time()
     
     for i,j,k in zip(n_, name_, pars_):
         
@@ -175,7 +178,7 @@ if __name__ == "__main__":
             
             #thread.join()
 
-        t_gen(m, i, j, parameters[j][k], results, threading=Tg, random_seed=1927+c)
+        t_gen(m, i, j, parameters[j][k], results, threading=Tg, random_seed=1927+c, GR=GR)
         
         T = (np.array(results).ravel())[:1000]
         
@@ -189,7 +192,7 @@ if __name__ == "__main__":
         
         #print(T_sample[j][k])
         
-        fig, ax, results = fitdist(T, f"{i}_{k}_{j}")
+        fig, ax, results = fitdist(T, f"{i}_{k}_{j}", color = color)
         
         plt.close(fig)        
        # fig.savefig(path+"/"+j+"/"+f"{i}_{k}"+".png", dpi = 300)
@@ -228,7 +231,7 @@ if __name__ == "__main__":
                                       ["left", "left", "right3", "right4"]]
                                      , figsize=(12, 6))
         
-            fitdist2(T_sample[j][i][f"{k}"], f"n={k} (Dependencia: {espaniol[i]})" ,ax["left"])
+            fitdist2(T_sample[j][i][f"{k}"], f"n={k} (Dependencia: {espaniol[i]})" ,ax["left"], color=color)
         
             ax["left"].set_xlabel("Valores")
             ax["left"].set_ylabel("Frecuencias")
@@ -236,7 +239,7 @@ if __name__ == "__main__":
         elif k > np.min(muestra):
         
             fitdist2(T_sample[j][i][f"{k}"],f"n={k}" ,
-                     ax[list(ax.keys())[list(np.unique(muestra))[::-1].index(k)]])
+                     ax[list(ax.keys())[list(np.unique(muestra))[::-1].index(k)]], color = color)
           
             ax[list(ax.keys())[list(np.unique(muestra))[::-1].index(k)]].set_ylabel("")
             ax[list(ax.keys())[list(np.unique(muestra))[::-1].index(k)]].set_xlabel("")
@@ -246,7 +249,7 @@ if __name__ == "__main__":
         else:
         
             fitdist2(T_sample[j][i][f"{k}"],f"n={k}" ,
-                 ax[list(ax.keys())[-1]])
+                 ax[list(ax.keys())[-1]], color = color)
           
             ax[list(ax.keys())[-1]].set_ylabel("")
             ax[list(ax.keys())[-1]].set_xlabel("")
@@ -262,29 +265,45 @@ if __name__ == "__main__":
             fig.show()
 
 #%% Ejemplo metodología
+    how = "conf"
+    #how = "pot"
+    #only_sample = True
+    only_sample = False
 
     fig, ax = plt.subplot_mosaic([["top"]*4,
                               ["bottom1","bottom2","bottom3","bottom4"]],
                               figsize=(16, 8))
-    sns.histplot(T_sample["fgm"]["weak"]["100"], ax = ax["top"], color = "dimgrey")
+    sns.histplot(T_sample["fgm"]["weak"]["100"], ax = ax["top"], color = color)
     ax["top"].set_title("Distribución de las réplicas del indicador")
     ax["top"].set_xlabel("")
     ax["top"].set_ylabel("Frecuencia absoluta", fontsize=12)
     b = [np.random.choice(T_sample["fgm"]["weak"]["100"], size = 1000) for i in range(4)]
     for i,j in zip(b, list(ax.keys())[1:]):
         
-        u, v = sample(100, "clayton", 1)
-        tc = ((Qn(pd.DataFrame(dict(x=u,y=v)), u, v,Cn)-Q(u, v, FGM, [.2])
+        if not how=="conf":
+        #Potencia
+            u, v = sample(100, "clayton", 1)
+        else:
+        #Confianza
+            u,v = sample(100,"fgm",0.2)
+        
+        tc = ((Qn(pd.DataFrame(dict(x=u,y=v)), u, v,Cn, GR=GR)-Q(u, v, FGM, [.2], GR=GR)
                )**2).sum()
+        #Si se quita cond del hue, se puede analizar solo las muestras
         g = pd.DataFrame([i,
             i>=np.quantile(i, 0.95)], index = ["Values", "Cond"]).T
-        sns.histplot(x="Values", data = g, hue = "Cond" ,ax = ax[j],
-                      palette = ["dimgrey", "darkred"])
-        ax[j].vlines(np.quantile(i, 0.95),*ax[j].get_ylim(),
+        if not only_sample:
+            sns.histplot(x="Values", data = g, hue = "Cond" ,ax = ax[j],
+                      palette = [color, "darkred"])
+            ax[j].vlines(np.quantile(i, 0.95),*ax[j].get_ylim(),
                      label= "Limite superior", color = "red")
-        ax[j].vlines(tc,*ax[j].get_ylim(),
+            ax[j].vlines(tc,*ax[j].get_ylim(),
                      label= "Valor calculado", color = "green")
-        ax[j].set_title(f"Submuestra-(k) = ({list(ax.keys()).index(j)})")
+        else:
+            sns.histplot(x="Values", data = g ,ax = ax[j],
+                      color = color)
+            
+        ax[j].set_title(f"Remuestreo-(k) = ({list(ax.keys()).index(j)})")
         ax[j].set_xlabel("")
         ax[j].set_ylabel("")
     for i in ax.keys():
@@ -294,10 +313,18 @@ if __name__ == "__main__":
             ax[i].spines[j].set_visible(False)
     fig.tight_layout()
     
+    if only_sample:
     
+        fig.savefig(path+"/"+"Demo.png", dpi=150)
+        
+    elif how=="conf":
+        
+        fig.savefig(path+"/"+"Demo2.png", dpi=150)
     
-    fig.savefig(path+"/"+"Demo3.png", dpi=150)
-    
+    else:
+        
+        fig.savefig(path+"/"+"Demo3.png", dpi=150)
+        
     fig.show()
 
 
@@ -388,7 +415,7 @@ if __name__ == "__main__":
                     list_conf.append([i, j, k, 
                               Pow_Conf_(sample_uv,
                                        tkey=t,
-                                       m_resamples=1000)
+                                       m_resamples=1000, GR=GR)
                               ])
                     
                     cond = 3
@@ -413,8 +440,8 @@ if __name__ == "__main__":
     tab_conf = pd.pivot_table(prue_conf,
                             values = "Valor-p",
                             index = ["H_0",
-                                     "Dependencia"],
-                            columns = ["n"], aggfunc="sum")
+                                     "Dependencia","n"],
+                             aggfunc="sum")
 #%% Power 
 
     cond = 3
@@ -447,7 +474,7 @@ if __name__ == "__main__":
                              Pow_Conf_(sample_uv,
                                       tkey = j,
                                       m_resamples=1000,
-                                      key = t)
+                                      key = t, GR=GR)
                              ])
                     
                     cond = 3
@@ -466,7 +493,7 @@ if __name__ == "__main__":
                                  Pow_Conf_(sample_uv,
                                           tkey = j,
                                           m_resamples=1000,
-                                          key = t)
+                                          key = t, GR=GR)
                                  ])
                         
                         cond = 3
@@ -500,3 +527,14 @@ if __name__ == "__main__":
                              index = ["H_0", "Dependencia","n"],
                              columns = ["H_1"], aggfunc="sum")
          
+#%% Finish
+
+ruta_salida = "C:/Users/julia/OneDrive/Desktop/TG/Imag/CALIDAD_TEST.xlsx"
+
+
+Escritor(ruta_salida, tab_conf.reset_index(),
+         "CONFIANZA", mode="w", index=False)
+
+Escritor(ruta_salida, tab_pot.reset_index(),
+         "POTENCIA", mode="a", index=False)
+

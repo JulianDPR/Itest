@@ -230,7 +230,8 @@ def Q(u, v, Cfunction, parameters, diff = False ,GR = False):
 
 #%% Sample generator
 
-def sample(n, key, alpha, threading = True, cython = False):
+def sample(n, key, alpha, threading = True,
+           cython = False, n_threat = 8):
     
     """
     n: u, v sample size
@@ -289,16 +290,13 @@ def sample(n, key, alpha, threading = True, cython = False):
         
         #alpha = alpha/((alpha>=0) and (alpha<=1))
         
-        n__ = np.array([
-             36,
-             56,
-             104,
-             504,
-             1000,
-             10000,
-             100000])
+        n__ = n
         
-        n__= n__[n__>=n][0]    
+        while n__%n_threat:
+            
+            n__ += 1   
+            
+        #print(n__)
         
         v1 = ss.uniform(0,1).rvs(n__)
         
@@ -308,8 +306,7 @@ def sample(n, key, alpha, threading = True, cython = False):
         
         result = {}
 
-        
-        k = 8
+        k = n_threat
         
         n_ = (n__)//k
         
@@ -615,7 +612,41 @@ def CopulaIM2(function, alpha, nint = 300):
     
 #%% T generator
 
-def T_gen(n, key, alpha, empcop = Cn, threading = True, dist_key = None, dist_parameter = None, graph = False, GR = False):
+
+def T(XY, u, v, function ,alpha, GR = False):
+    """
+    XY: Sample
+    u: Rank of X
+    v: Rank of Y
+    function: Copula function
+    alpha: Parameter
+    
+    return: Statistic
+    """
+    
+    qn = Qn(XY, u, v, Cn, GR=GR)
+    
+    q = Q(u, v, function, [alpha], GR=GR)
+    
+    if not GR:
+    
+        qn_ = qn[(abs(q)<=1)&(abs(qn)<=1)]
+    
+        q_ = q[(abs(q)<=1)&(abs(qn)<=1)]
+   # fitdist(np.sqrt(len(q_))*(qn_-q_))
+        t_c = ((q_-qn_)**2).sum()
+    
+    else:
+        
+        t_c = ((q-qn)**2).sum()
+    
+    return t_c
+
+def T_gen(n, key, alpha, empcop = Cn,
+          threading = True, dist_key = None,
+          dist_parameter = None,
+          graph = False, GR = False,
+          n_threat=1, cython = False):
     
     """
     n: u, v sample size
@@ -636,7 +667,8 @@ def T_gen(n, key, alpha, empcop = Cn, threading = True, dist_key = None, dist_pa
         
         dist_parameter = alpha
     
-    u, v = sample(n, key, alpha, threading)
+    u, v = sample(n, key, alpha, threading,
+                  n_threat=n_threat, cython=False)
     
     XY = pd.DataFrame(dict(x = u, y = v))
 
@@ -676,37 +708,47 @@ def T_gen(n, key, alpha, empcop = Cn, threading = True, dist_key = None, dist_pa
         
         raise Exception("La función no está dentro del estudio")
 
-    q = Q(u, v, function, [dist_parameter])
+    # q = Q(u, v, function, [dist_parameter])
     
-    qn_ = qn[(abs(q)<=1)&(abs(qn)<=1)]
+    # qn_ = qn[(abs(q)<=1)&(abs(qn)<=1)]
     
-    q_ = q[(abs(q)<=1)&(abs(qn)<=1)]
+    # q_ = q[(abs(q)<=1)&(abs(qn)<=1)]
     
-    u_ = u[(abs(q)<=1)&(abs(qn)<=1)]
+    # u_ = u[(abs(q)<=1)&(abs(qn)<=1)]
     
-    v_ = v[(abs(q)<=1)&(abs(qn)<=1)]
+    # v_ = v[(abs(q)<=1)&(abs(qn)<=1)]
     
-    pi = u_*v_
+    # pi = u_*v_
     
-    pi_ = (1-u_)*(1-v_)
+    # pi_ = (1-u_)*(1-v_)
+    
+    # if graph:
+        
+    #     fitdist((q_-qn_)**2, "T sample")
+    
+    t = T(XY, u, v, function, alpha, GR)
     
     if graph:
         
-        fitdist((q_-qn_)**2, "T sample")
+        fitdist(T, "T sample")
+    
+    return t
     
    # fitdist(np.sqrt(len(q_))*(qn_-q_))
    
-    if GR:
+    # if GR:
     
-        return (pi*pi_*(q_-qn_)**2).sum()
+    #     return (pi*pi_*(q_-qn_)**2).sum()
        
-    else:
+    # else:
         
-        return ((q_-qn_)**2).sum()
+    #     return ((q_-qn_)**2).sum()
 
 
-def t_gen(m, n, key, alpha, return_ ,empcop = Cn, threading = True,
-          GR = False, random_seed = 1927, tqdm_ = None):
+def t_gen(m, n, key, alpha, return_ ,empcop = Cn,
+          threading = False,
+          GR = False, random_seed = 1927, tqdm_ = None,
+          n_threat=1, cython = False):
     
     """
     m: T sample size
@@ -729,18 +771,25 @@ def t_gen(m, n, key, alpha, return_ ,empcop = Cn, threading = True,
     
     if tqdm_ :
         
-        return_.append(list(map(lambda x, y: T_gen(n, key, alpha,
+        return_.append(list(map(lambda x, y: T_gen(n, key,
+                                                   alpha,
                                                 Cn, threading,
-                                                GR = GR), range(m), tqdm(range(m-1)))))
+                                                GR = GR,
+                            n_threat=n_threat, cython=cython), 
+                                range(m),
+                                tqdm(range(m-1)))))
     else:
         
         return_.append(list(map(lambda x: T_gen(n, key, alpha,
                                             Cn, threading,
-                                            GR = GR), range(m))))
+                                            GR = GR,
+                                            n_threat=n_threat,
+                                            cython=cython),
+                                range(m))))
 
 #%% Distfit
 
-def fitdist(sample, title = None):
+def fitdist(sample, title = None, color = "#647c8c"):
     
     """
     sample: m samples form T distristribution
@@ -757,7 +806,8 @@ def fitdist(sample, title = None):
     
     results = dfit.fit_transform(sample)
     
-    dfit.plot(n_top = 3, ax = ax)
+    dfit.plot(n_top = 3, ax = ax,
+              bar_properties={'color': f'{color}'})
     
     if title != None:
         
@@ -765,7 +815,7 @@ def fitdist(sample, title = None):
     
     return fig, ax, results
 
-def fitdist2(sample, title="", axis = None):
+def fitdist2(sample, title="", axis = None, color = "#647c8c"):
     
     """
     sample: m samples form T distristribution
@@ -786,7 +836,8 @@ def fitdist2(sample, title="", axis = None):
         
         results = dfit.fit_transform(sample)
         
-        dfit.plot(n_top = 3, ax = axis)
+        dfit.plot(n_top = 3, ax = axis,
+                  bar_properties={'color': f'{color}'})
         
         axis.set_title(title, fontsize = 16)
         
@@ -1133,7 +1184,7 @@ def bias_plot(sample, title = "", path = None):
     #print(n)
     
     (bias_).plot(kind = "line", marker = ".",
-                ax = ax[0], color=["teal", "tomato", "springgreen"])
+                ax = ax[0], color=["#1b1b53", "#832727", "#283d3d"])
     
     ax[0].set_title(r"Sesgo $\hat\lambda - E[\hat\Lambda]$")
     
@@ -1143,7 +1194,7 @@ def bias_plot(sample, title = "", path = None):
     
     ax[0].grid()
     
-    mse.plot(kind = "line", marker = ".", ax = ax[1],  color=["teal", "tomato", "springgreen"])
+    mse.plot(kind = "line", marker = ".", ax = ax[1],  color=["#1b1b53", "#832727", "#283d3d"])
     
     ax[1].set_title(r"MSE $E[({\hat\lambda}-\hat\Lambda)^{2}]$")
     
@@ -1439,7 +1490,8 @@ def kv(key, kt):
     
     return (function, lim, plim)
 
-def maxkt(XY, n, function, kt, plim, lim, argmax = argmax):
+def maxkt(XY, n, function, kt, plim,
+          lim, argmax = argmax):
     """
     n: sample size
     function: Copula function
@@ -1484,30 +1536,6 @@ def maxkt(XY, n, function, kt, plim, lim, argmax = argmax):
     
 #%% T test
 
-def T(XY, u, v, function ,alpha):
-    """
-    XY: Sample
-    u: Rank of X
-    v: Rank of Y
-    function: Copula function
-    alpha: Parameter
-    
-    return: Statistic
-    """
-    
-    qn = Qn(XY, u, v, Cn)
-    
-    q = Q(u, v, function, [alpha])
-    
-    qn_ = qn[(abs(q)<=1)&(abs(qn)<=1)]
-    
-    q_ = q[(abs(q)<=1)&(abs(qn)<=1)]
-   # fitdist(np.sqrt(len(q_))*(qn_-q_))
-    t_c = ((q_-qn_)**2).sum()
-    
-    return t_c
-
-
 def Testimation(sample_, key, kt_ = None):
     
     """
@@ -1534,7 +1562,8 @@ def Testimation(sample_, key, kt_ = None):
     
     return XY, a0, alpha, function
 
-def Ttest_(sample_, key, n_bootst = 1000):
+def Ttest_(sample_, key, n_bootst = 1000,
+           threading=False, GR = False):
     
     """
     sample: DataFrame bivariate random sample
@@ -1553,12 +1582,12 @@ def Ttest_(sample_, key, n_bootst = 1000):
     return_ = []
     
     t_gen(int(n_bootst*1.1), XY.shape[0],
-          key, alpha, return_)
+          key, alpha, return_, threading=threading, GR=GR)
     
     t_sam = np.array(return_).ravel()[:n_bootst]
     
     t_c = T(XY, sample_[0], sample_[1], function,
-            alpha)
+            alpha, GR=GR)
     
     Ptc = (t_sam >= t_c).mean()
     
@@ -1567,7 +1596,9 @@ def Ttest_(sample_, key, n_bootst = 1000):
                              Pvalue = [Ptc]))
 
 def Pow_Conf_(sample_, tkey, confidence = 0.95,
-              n_bootst = 1000, key = None, m_resamples = 1000):
+              n_bootst = 1000, key = None,
+              m_resamples = 1000, threading=False,
+              GR=False):
     
     """
     sample: DataFrame bivariate random sample
@@ -1587,7 +1618,8 @@ def Pow_Conf_(sample_, tkey, confidence = 0.95,
     return_ = []
     
     t_gen(int(m_resamples*1.1), XY.shape[0],
-          tkey, alpha, return_)
+          tkey, alpha, return_, threading=threading,
+          GR=GR)
     
     t_sam = np.array(return_).ravel()[:n_bootst]
     #-----------------
@@ -1600,7 +1632,8 @@ def Pow_Conf_(sample_, tkey, confidence = 0.95,
                                               index = ["x","y"]).T
                         ,range(n_bootst)))
         
-        t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha),
+        t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha,
+                                   GR=GR),
                        uv))
         
     
@@ -1625,7 +1658,8 @@ def Pow_Conf_(sample_, tkey, confidence = 0.95,
                                               index = ["x","y"]).T
                         ,range(n_bootst)))
         
-        t_c = list(map(lambda x: T(x, x.x.values, x.y.values, function, alpha),
+        t_c = list(map(lambda x: T(x, x.x.values, x.y.values,
+                                   function, alpha, GR=GR),
                        uv))    
         #nbTest = (t_bootst>=np.array(t_c)).mean(axis=0)
     
@@ -1639,7 +1673,8 @@ def Pow_Conf_(sample_, tkey, confidence = 0.95,
 def conf_pow(Sample,t_sam, n_bootst,
              alpha, function, tkey,
              key = None,
-             confidence = 0.95):
+             confidence = 0.95,
+             threading=False):
     
     t_bootst = Bootsttrap(t_sam, k=n_bootst)
     
