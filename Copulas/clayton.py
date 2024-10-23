@@ -23,7 +23,7 @@ def Clayton(XY, alpha, diff = False):
         x = XY.x.values.ravel()
         y = XY.y.values.ravel().reshape(-1,1)
         
-        return (x**(-alpha)+y**(-alpha)-1)**(-1/alpha)
+        #return (x**(-alpha)+y**(-alpha)-1)**(-1/alpha)
     
     else:
         
@@ -31,7 +31,7 @@ def Clayton(XY, alpha, diff = False):
         
         y = XY["y"]
 
-        return (x**(-alpha)+y**(-alpha)-1)**(-1/alpha)
+    return (x**(-alpha)+y**(-alpha)-1)**(-1/alpha)
 
 #generator
 

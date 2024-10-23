@@ -252,7 +252,7 @@ def sample(n, key, alpha, threading = True,
         
         from Copulas.clayton import inv_Clayton
         
-        #alpha = alpha/((-1<=alpha<float("inf") and (alpha!=0)))
+        alpha = alpha/(-1<=alpha<float("inf"))
         
         u = v1
         
@@ -262,7 +262,7 @@ def sample(n, key, alpha, threading = True,
         
         from Copulas.gumbel_hougaard import inv_Gumbel_Hougaard
         
-        #alpha = alpha/(alpha>=1)
+        alpha = alpha/(alpha>=1)
         
         x = ss.levy_stable(1/alpha,
                             1,
@@ -275,7 +275,7 @@ def sample(n, key, alpha, threading = True,
         
         from Copulas.frank import inv_Frank
         
-        #alpha = alpha/(((alpha>-float("inf") and alpha < float("inf")) and (alpha != 0)))
+        alpha = alpha/(((alpha>-float("inf") and alpha < float("inf"))))
         
         u = v1
         
@@ -288,7 +288,7 @@ def sample(n, key, alpha, threading = True,
         
         from Copulas.gumbel_barnett import inv_Gumbel_Barnett
         
-        #alpha = alpha/((alpha>=0) and (alpha<=1))
+        alpha = alpha/((alpha>=0) and (alpha<=1))
         
         n__ = n
         
@@ -365,7 +365,7 @@ def sample(n, key, alpha, threading = True,
         
         from Copulas.fgm import inv_FGM
         
-        #alpha = alpha/(-1<= alpha <= 1)
+        alpha = alpha/(-1<= alpha <= 1)
         
         u, v = inv_FGM(v1, v2, alpha)
         
@@ -380,6 +380,10 @@ def sample(n, key, alpha, threading = True,
 def Diff(u, v, g, h=1e-6):
     
     return (g(u+h,v)-g(u-h,v))/(2*h)
+
+def Diff_(alpha, u, v, g,h=1e-6):
+    
+    return (g(u,v, alpha+h)-g(u,v, alpha-h))/(2*h)
 
 def c_density(u, v, function, alpha, h = 1e-6, diff = False, axis = 2):
     
@@ -572,9 +576,24 @@ def trapezium_rule(values):
     return: integral result
     """
     
-    f = (values[:,0] + 2*values[:,1:-1].sum(axis=1) + values[:,-1]).ravel()
+    B = values.copy()
     
-    g = f[0] + 2*f[1:-1].sum() + f[-1]
+    B[:, 1:-1] = B[:, 1:-1]*2
+    
+    B[1:-1, :] = B[1:-1, :]*2
+    
+    g = np.nansum(B)
+    
+    
+    #if na_omit:
+     #   f = (values[:,0] + 2*np.nansum(values[:,1:-1], axis=1) + values[:,-1]).ravel()
+    #
+     #   g = f[0] + 2*np.nansum(f[1:-1]) + f[-1]
+    
+    #else:
+     #   f = (values[:,0] + 2*np.sum(values[:,1:-1], axis=1) + values[:,-1]).ravel()
+    
+      #  g = f[0] + 2*np.sum(f[1:-1]) + f[-1]
     
     return (1/(2*values.shape[0])**2) * g
     
@@ -895,56 +914,55 @@ def Bootst(sample, k):
     
     return b
 
-# =============================================================================
-# def Bootst_2(sample, k):
-#     
-#     np.random.seed(1914)
-#     
-#     """
-#     sample: m sample from T distribution
-#     
-#     k: number of m size resamples 
-#     
-#     return: A df with bias, var and mse
-#     """
-#     
-#     sk = ss.skew(sample)
-#     
-#     if sk != 0:
-#         
-#         stat = np.median
-# 
-#     else:
-#         
-#         stat = np.mean
-# 
-#     m = len(sample)
-#     
-#     botst = np.zeros((m, k))
-#     
-#     bootst = np.apply_along_axis(
-#         lambda x: np.random.choice(sample,
-#                                    m,
-#         replace = True) if np.sum(x)== 0 else x,
-#         0, 
-#         botst  
-#         )
-#     
-#     T = pd.DataFrame(bootst).apply(mom2)
-#     
-#     ET = T.mean(axis = 1)
-#     
-#     VT = T.var(axis = 1)
-#     
-#     
-#     VT = pd.Series(dict(Vgamma = VT.iloc[:3].sum(),
-#               Vln = VT.iloc[3:6].sum(),
-#               Vgum = VT.iloc[6:].sum()))
-# 
-#     b = pd.concat([ET,VT])
-#     
-#     return b
-# =============================================================================
+def Bootst_2(sample, k):
+    
+    np.random.seed(1914)
+    
+    """
+    sample: m sample from T distribution
+    
+    k: number of m size resamples 
+    
+    return: A df with bias, var and mse
+    """
+    
+    sk = ss.skew(sample)
+    
+    if sk != 0:
+        
+        stat = np.median
+
+    else:
+        
+        stat = np.mean
+
+    m = len(sample)
+    
+    botst = np.zeros((m, k))
+    
+    bootst = np.apply_along_axis(
+        lambda x: np.random.choice(sample,
+                                   m,
+        replace = True) if np.sum(x)== 0 else x,
+        0, 
+        botst  
+        )
+    
+    T = pd.DataFrame(bootst).mean(axis=0)
+    
+    #print(T)
+    
+    b = pd.Series(dict(E = T.mean() ,
+             V = T.var()))
+    
+    
+   # VT = pd.Series(dict(Vgamma = VT.iloc[:3].sum(),
+    #          Vln = VT.iloc[3:6].sum(),
+     #         Vgum = VT.iloc[6:].sum()))
+
+   # b = pd.concat([ET,VT])
+    
+    return b
 
 def Bootst2(sample, k):
     
@@ -1162,6 +1180,39 @@ def bias(sample):
     
     return dict(bias = bias, var = var, mse = mse)
 
+def bias2(sample, k):
+    
+    """
+    sample: A array with n repeats from x's distribution
+    
+    return: The Variance, Bias and Mse from X estimators
+    """
+    
+    moms_ = sample.mean(axis=0)
+    
+    #print(moms_)
+    
+    bootst = sample.apply(lambda x: Bootst_2(x, k)).T
+    
+    #print(bootst)
+    
+    r_bootst = bootst.loc[moms_.index,:]
+    
+    bias = (moms_-r_bootst["E"])
+    
+    #print(bias)
+
+    var = r_bootst["V"]
+    
+    var.index = bias.index
+    
+    mse = bias**2+var
+    
+    #mse.index = 
+    
+    return pd.DataFrame(dict(Media = moms_ , bias = bias, var = var, mse = mse))
+    
+
 def bias_plot(sample, title = "", path = None):
     """
     sample: A array with n repeats from x's distribution
@@ -1197,6 +1248,61 @@ def bias_plot(sample, title = "", path = None):
     mse.plot(kind = "line", marker = ".", ax = ax[1],  color=["#1b1b53", "#832727", "#283d3d"])
     
     ax[1].set_title(r"MSE $E[({\hat\lambda}-\hat\Lambda)^{2}]$")
+    
+    X1 = ax[1].get_xlim()
+    
+    ax[1].hlines(0, *X1, linestyle="--", color = "black")
+    
+    ax[1].grid()
+    
+    fig.suptitle(title)
+    
+    fig.tight_layout()
+    
+    if path != None:
+        
+        fig.savefig(path, dpi = 200)
+    
+    fig.show()
+    
+    return Bias
+
+
+def bias_plot2(sample, title = "", path = None, k = 1000):
+    """
+    sample: A array with n repeats from x's distribution
+    
+    return: The plot of Variance, Bias and Mse from X estimators
+    """
+    
+    Bias = bias2(sample,k)
+    
+    fig, ax = plt.subplots(1, 2, figsize=(10,5))
+    
+    ax = ax.ravel()
+    
+    bias_ = Bias["bias"]
+    
+    mse = Bias["mse"]
+    
+    n = np.array(list(bias_.index), dtype="float64").ravel()
+    
+    #print(n)
+    
+    (bias_).plot(kind = "line", marker = ".",
+                ax = ax[0], color=["#1b1b53", "#832727", "#283d3d"])
+    
+    ax[0].set_title(r"Sesgo $\hat{\bar{I}}^{(k)}-E[I]$")
+    
+    X0 = ax[0].get_xlim()
+    
+    ax[0].hlines(0, *X0, linestyle="--", color = "black")
+    
+    ax[0].grid()
+    
+    mse.plot(kind = "line", marker = ".", ax = ax[1],  color=["#1b1b53", "#832727", "#283d3d"])
+    
+    ax[1].set_title(r"MSE $E[(\hat{\bar{I}}^{(k)} - E[I])^{2}]$")
     
     X1 = ax[1].get_xlim()
     
@@ -1550,6 +1656,8 @@ def Testimation(sample_, key, kt_ = None):
     else:
         
         kt = kt_
+        
+    #print(kt)
     
     function, lim, plim = kv(key, kt)
     
@@ -1614,6 +1722,8 @@ def Pow_Conf_(sample_, tkey, confidence = 0.95,
     # tkey estimation 
     
     XY, a0, alpha, function = Testimation(Sample, tkey)
+    
+    #print(a0, alpha)
     
     return_ = []
     
