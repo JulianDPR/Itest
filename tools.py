@@ -952,8 +952,8 @@ def Bootst_2(sample, k):
     
     #print(T)
     
-    b = pd.Series(dict(E = T.mean() ,
-             V = T.var()))
+    #b = pd.Series(dict(E = T.mean() ,
+     #        V = T.var()))
     
     
    # VT = pd.Series(dict(Vgamma = VT.iloc[:3].sum(),
@@ -962,7 +962,7 @@ def Bootst_2(sample, k):
 
    # b = pd.concat([ET,VT])
     
-    return b
+    return T
 
 def Bootst2(sample, k):
     
@@ -1086,41 +1086,48 @@ def moms(sample):
     
     return pd.Series(dic)
 
-# =============================================================================
-# def mom2(sample):
-#     
-#     """
-#     sample: A array with n repeats from x's distribution
-#     
-#     return: Gamma, Gumbel, Lognormal parameters estimators
-#     
-#     """
-#     
-#     gam = ss.gamma.fit(sample)
-#     
-#     gen = ss.genextreme.fit(sample)
-#     
-#     ln = ss.lognorm.fit(sample)
-#     
-#     dic = dic = dict(
-#     
-#     gamma_a = gam[0],
-#     
-#     gamma_b = gam[1],
-#     
-#     gamma_c = gam[2],
-#     
-#     ln_m = ln[0],
-#     ln_b = ln[1],
-#     ln_c = ln[2]
-#     ,
-#     gen_a = gen[0],
-#     gen_b = gen[1],
-#     gen_c = gen[2]
-#     
-#     )
-#     
-#     return pd.Series(dic)
+#=============================================================================
+def mom2(sample):
+    
+    """
+    sample: A array with n repeats from x's distribution
+    
+    return: Gamma, Gumbel, Lognormal parameters estimators
+    
+    """
+    
+    gam = ss.gamma.fit(sample)
+    
+    
+    gam2 = moms(sample)[["gamma_a","gamma_b"]]
+    
+    #gen = ss.genextreme.fit(sample)
+    
+    #ln = ss.lognorm.fit(sample)
+    
+    dic = dic = dict(
+    
+    gamma_3_a = gam[0],
+    
+    gamma_3_c = gam[1],
+    
+    gamma_3_b = gam[2],
+    
+    gamma_2_a = gam2["gamma_a"],
+    
+    gamma_2_b = gam2["gamma_b"]
+    
+    #ln_m = ln[0],
+    #ln_b = ln[1],
+    #ln_c = ln[2]
+    #,
+    #gen_a = gen[0],
+    #gen_b = gen[1],
+    #gen_c = gen[2]
+    
+    )
+    
+    return pd.Series(dic)
 # =============================================================================
     
 
@@ -1196,17 +1203,23 @@ def bias2(sample, k):
     
     #print(bootst)
     
-    r_bootst = bootst.loc[moms_.index,:]
+    r_bootst = bootst.loc[moms_.index,:].T
     
-    bias = (moms_-r_bootst["E"])
+    #print(moms_)
+    
+    bias = (moms_-r_bootst.mean())*(-1)
     
     #print(bias)
 
-    var = r_bootst["V"]
+    #var = r_bootst["V"]
     
-    var.index = bias.index
+    #var.index = bias.index
     
-    mse = bias**2+var
+    mse = ((r_bootst-moms_)**2).mean()
+    
+    var = mse-bias**2
+    
+    print()
     
     #mse.index = 
     
@@ -1411,7 +1424,24 @@ def fit(sample, parameters, graph = False):
     
     return ad
 
+def fit2(sample, parameters):
+    
+    qq_gamma3 = ss.probplot(sample, sparams=(parameters['gamma_3_a'], parameters['gamma_3_c'], parameters['gamma_3_b']),
+            dist = ss.gamma)
+    
+    qq_gamma2 = ss.probplot(sample, sparams=(parameters['gamma_2_a'], 0, parameters['gamma_2_b']),
+            dist = ss.gamma)
+    
+   
+    
+    ad = dict( ad_gamma2 = ss.anderson_ksamp([qq_gamma2[0][1], qq_gamma2[0][0]
+                                            ]).pvalue, 
+              ad_gamma3 = ss.anderson_ksamp([qq_gamma3[0][1], qq_gamma3[0][0]
+                                            ]).pvalue)
+   # print(ad)
+    ad = pd.Series(ad)
 
+    return ad
 # =============================================================================
 # def root(function, args):
 #     

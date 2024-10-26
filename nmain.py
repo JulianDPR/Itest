@@ -64,6 +64,8 @@ from tools import fitdist2
 from tools import bias2
 from tools import Bootst_2
 from tools import bias_plot2
+from tools import mom2
+from tools import fit2
 
 from Copulas.fgm import FGM
 #%% Objetivo 1
@@ -346,7 +348,7 @@ if __name__ == "__main__":
     
     for i in np.unique(name_):
     
-        fig, ax = plt.subplots(2,1,figsize=(10,10))
+        fig, ax = plt.subplots(2,1,figsize=(10,5))
     
         ax[0].set_title(r"Sesgo ${\bar{I}}^{(k)}-E[I]$")
     
@@ -395,6 +397,10 @@ if __name__ == "__main__":
         
         ax[1].set_xlabel(r"Tamaño de muestra $n$")
         
+        ax[0].legend(framealpha = 0.2, ncols = 3)
+        
+        ax[1].legend(framealpha = 0.2, ncols = 3)
+        
         fig.tight_layout()
         
         fig.savefig(f"{path}/{i}/ECM{i}.png", dpi=100)
@@ -422,13 +428,13 @@ if __name__ == "__main__":
     #                                                                                      "cline","cmidrule"))
     # print(Bias["mse"].T[["Mln","Mgum"]].groupby([pd.Series(name_).str.replace("_"," ").str.capitalize().values,espaniol2[pars_].values,n_]).apply(lambda x: ((x==x.min(axis=1).values.reshape(-1,1))).mean()).mean())
     #%%
-    k = df.apply(moms).T
+    k = df.apply(mom2).T
     
-    print(k.groupby([pd.Series(name_).str.replace("_", " ").str.title().values,espaniol2[pars_].values,n_]).mean().round(2).to_latex(multirow=True,
+    print(k.groupby([pd.Series(name_).str.replace("_", " ").str.title().values,espaniol2[pars_].values,n_]).sum().to_latex(multirow=True,
                                                             caption="Valor estimado de los parámetros de la distribución candidata",
                                                             label="tab:estimacion", float_format="{:.1f}".format).replace(
                                                                 "fgm","FGM").replace("cline","cmidrule").replace(
-                                                                    "fgm","FGM").replace("1.","").replace("2.","").replace("3.",""))
+                                                                    "fgm","FGM").replace("1.D","D").replace("2.M","M").replace("3.F","F"))
     
    # print(k.groupby([name_,pars_]).median().round(2))
     
@@ -436,12 +442,12 @@ if __name__ == "__main__":
     
     plt.show()
     
-    aj = df.apply(lambda x: fit(x, k.loc[x.name,:]))
+    aj = df.apply(lambda x: fit2(x, k.loc[x.name,:]))
 
 #%%
     AD_table = aj.T.groupby([pd.Series(name_).str.replace("_", " ").str.title().values,espaniol2[pars_].values,n_]).apply(lambda x: np.sum(x>0.05)).reset_index()
 
-    AD_table.columns = ["Función Cópula", "Dependencia", "n", "Log-Normal", "Gamma", "Gumbel"]
+    AD_table.columns = ["Función Cópula", "Dependencia", "n", "Gamma con 2 parametros", "Gamma con 3 parametros"]
             
     AD_table = pd.melt(AD_table, AD_table.columns[:3], AD_table.columns[3:])
 
@@ -471,18 +477,18 @@ if __name__ == "__main__":
     
     #print((Bias["mse"].T.values[:,[0,2]] >= Bias["mse"].T.values[:,1][:,None]).mean(axis=0).mean())
     
-    pars__, name__ = np.meshgrid(np.unique(pars_),np.unique(name_))
+    # pars__, name__ = np.meshgrid(np.unique(pars_),np.unique(name_))
     
-    name__, pars__ = name__.ravel(), pars__.ravel()
+    # name__, pars__ = name__.ravel(), pars__.ravel()
     
-    result_ = {}
+    # result_ = {}
     
-    for i,j in zip(name__, pars__):
+    # for i,j in zip(name__, pars__):
         
-        result_.update({i+"-"+j:bias_plot2(pd.DataFrame((pd.DataFrame(T_sample)).loc[j,
-                                    i])**(1/2), ""
-                                        #  i.upper()+"-"+j.upper()
-                                          , path+"/"+i+"/"+f"{i}_{j}"+".png")})
+    #     result_.update({i+"-"+j:bias_plot2(pd.DataFrame((pd.DataFrame(T_sample)).loc[j,
+    #                                 i])**(1/2), ""
+    #                                     #  i.upper()+"-"+j.upper()
+    #                                       , path+"/"+i+"/"+f"{i}_{j}"+".png")})
     
 #%% Objetica 3
 
